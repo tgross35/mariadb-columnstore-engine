@@ -5058,6 +5058,17 @@ ReturnedColumn* buildAggregateColumn(Item* item, gp_walk_info& gwi)
                     ct.precision = precision;
                     ct.scale = scale;
                 }
+                else if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(ct.colDataType))
+                {
+                   ct.colDataType = CalpontSystemCatalog::DECIMAL;
+                   ct.colWidth = datatypes::MAXDECIMALWIDTH;
+                   if (isAvg)
+                   {
+                       ct.scale += datatypes::MAXSCALEINC4AVG;
+                   }
+                   ct.precision = datatypes::INT128MAXPRECISION;
+                   ct.scale = datatypes::MAXSCALEINC4AVG;
+                }
                 else
                 {
                     ct.colDataType = CalpontSystemCatalog::LONGDOUBLE;

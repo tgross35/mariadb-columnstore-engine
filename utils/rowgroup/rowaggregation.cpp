@@ -1278,7 +1278,7 @@ void RowAggregation::doMinMax(const Row& rowIn, int64_t colIn, int64_t colOut, i
 //------------------------------------------------------------------------------
 void RowAggregation::doSum(const Row& rowIn, int64_t colIn, int64_t colOut, int funcType)
 {
-    int colDataType = rowIn.getColType(colIn);
+    datatypes::SystemCatalog::ColDataType colDataType = rowIn.getColType(colIn);
     long double valIn = 0;
     bool isWideDataType = false;
     void *wideValInPtr = nullptr;
@@ -1328,7 +1328,7 @@ void RowAggregation::doSum(const Row& rowIn, int64_t colIn, int64_t colOut, int 
                 idbassert(0);
                 throw std::logic_error("RowAggregation::doSum(): DECIMAL bad length.");
             }
-    
+
             break;
         }
 
@@ -1379,19 +1379,22 @@ void RowAggregation::doSum(const Row& rowIn, int64_t colIn, int64_t colOut, int 
             break;
         }
     }
-    if (LIKELY(!isWideDataType))
+
+    if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType) && !isWideDataType)
     {
         if (LIKELY(!isNull(fRowGroupOut, fRow, colOut)))
         {
-            long double valOut = fRow.getLongDoubleField(colOut);
-            fRow.setLongDoubleField(valIn+valOut, colOut);
+            int128_t *valOutPtr = fRow.getBinaryField<int128_t>(colOut);
+            int128_t sum = *valOutPtr + valIn;
+            fRow.setBinaryField(&sum, colOut);
         }
         else
         {
-            fRow.setLongDoubleField(valIn, colOut);
+            int128_t sum = valIn;
+            fRow.setBinaryField(&sum, colOut);
         }
     }
-    else
+    else if (isWideDataType)
     {
         uint32_t offset = fRow.getOffset(colOut);
         int128_t* dec = reinterpret_cast<int128_t*>(wideValInPtr);
@@ -1404,6 +1407,18 @@ void RowAggregation::doSum(const Row& rowIn, int64_t colIn, int64_t colOut, int 
         else
         {
             fRow.setBinaryField_offset(dec, sizeof(*dec), offset);
+        }
+    }
+    else
+    {
+        if (LIKELY(!isNull(fRowGroupOut, fRow, colOut)))
+        {
+            long double valOut = fRow.getLongDoubleField(colOut);
+            fRow.setLongDoubleField(valIn+valOut, colOut);
+        }
+        else
+        {
+            fRow.setLongDoubleField(valIn, colOut);
         }
     } // end-of isWideDataType block
 }
@@ -1823,7 +1838,7 @@ void RowAggregation::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, int6
     if (rowIn.isNullValue(colIn))
         return;
 
-    int colDataType = rowIn.getColType(colIn);
+    datatypes::SystemCatalog::ColDataType colDataType = rowIn.getColType(colIn);
     long double valIn = 0;
     long double valOut = fRow.getLongDoubleField(colOut);
     bool isWideDataType = false;
@@ -1920,14 +1935,22 @@ void RowAggregation::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, int6
     }
 
     // Set sum column
-    if (LIKELY(!isWideDataType))
+    if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType) && !isWideDataType)
     {
         if (LIKELY(notFirstValue))
-            fRow.setLongDoubleField(valIn + valOut, colOut);
-        else // This is the first value
-            fRow.setLongDoubleField(valIn, colOut);
+        {
+            int128_t* dec = fRow.getBinaryField<int128_t>(colOut);
+            int128_t sum = valIn + *dec;
+            fRow.setBinaryField(&sum, colOut);
+        }
+        else
+        {
+            int128_t sum = valIn;
+            fRow.setBinaryField(&sum, colOut);
+        }
+
     }
-    else
+    else if (isWideDataType)
     {
         uint32_t offset = fRow.getOffset(colOut);
         int128_t* dec = reinterpret_cast<int128_t*>(wideValInPtr);
@@ -1941,6 +1964,13 @@ void RowAggregation::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, int6
         {
             fRow.setBinaryField_offset(dec, sizeof(*dec), offset);
         }
+    }
+    else
+    {
+        if (LIKELY(notFirstValue))
+            fRow.setLongDoubleField(valIn + valOut, colOut);
+        else // This is the first value
+            fRow.setLongDoubleField(valIn, colOut);
     }
 }
 
@@ -3614,7 +3644,7 @@ void RowAggregationUM::doNotNullConstantAggregate(const ConstantAggData& aggData
                 {
                     fRow.setIntField(strtol(aggData.fConstValue.c_str(), nullptr, 10), colOut);
                 }
-                break;                    
+                break;
 
                 // AVG should not be uint32_t result type.
                 case execplan::CalpontSystemCatalog::UTINYINT:
@@ -3777,7 +3807,7 @@ void RowAggregationUM::doNotNullConstantAggregate(const ConstantAggData& aggData
                         // TODO: isn't precision loss possible below?
                         dbl *= datatypes::scaleDivisor<double>(fRowGroupOut->getScale()[i]);
                         dbl *= rowCnt;
- 
+
                         if ((dbl > 0 && dbl > (double) numeric_limits<int64_t>::max()) ||
                                 (dbl < 0 && dbl < (double) numeric_limits<int64_t>::min()))
                             throw logging::QueryDataExcept(overflowMsg, logging::aggregateDataErr);
@@ -4280,7 +4310,7 @@ void RowAggregationUMP2::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, 
     if (rowIn.isNullValue(colIn))
         return;
 
-    int colDataType = rowIn.getColType(colIn);
+    datatypes::SystemCatalog::ColDataType colDataType colDataType = rowIn.getColType(colIn);
     long double valIn = 0;
     long double valOut = fRow.getLongDoubleField(colOut);
     bool isWideDataType = false;
@@ -4363,20 +4393,22 @@ void RowAggregationUMP2::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, 
     }
 
     uint64_t cnt = fRow.getUintField(colAux);
-    if (LIKELY(!isWideDataType))
+
+    if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType) && !isWideDataType)
     {
         if (LIKELY(cnt > 0))
         {
-            fRow.setLongDoubleField(valIn + valOut, colOut);
-            fRow.setUintField(rowIn.getUintField(colIn + 1) + cnt, colAux);
+            int128_t sum = valIn + valOut;
+            fRow.setBinaryField(&sum, colOut);
         }
         else
         {
-            fRow.setLongDoubleField(valIn, colOut);
-            fRow.setUintField(rowIn.getUintField(colIn + 1), colAux);
+            int128_t sum = valIn;
+            fRow.setBinaryField(&sum, colOut);
         }
+
     }
-    else
+    else if (isWideDataType)
     {
         uint32_t offset = fRow.getOffset(colOut);
         int128_t* dec = reinterpret_cast<int128_t*>(wideValInPtr);
@@ -4390,6 +4422,19 @@ void RowAggregationUMP2::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, 
         else
         {
             fRow.setBinaryField_offset(dec, sizeof(*dec), offset);
+            fRow.setUintField(rowIn.getUintField(colIn + 1), colAux);
+        }
+    }
+    else
+    {
+        if (LIKELY(cnt > 0))
+        {
+            fRow.setLongDoubleField(valIn + valOut, colOut);
+            fRow.setUintField(rowIn.getUintField(colIn + 1) + cnt, colAux);
+        }
+        else
+        {
+            fRow.setLongDoubleField(valIn, colOut);
             fRow.setUintField(rowIn.getUintField(colIn + 1), colAux);
         }
     }

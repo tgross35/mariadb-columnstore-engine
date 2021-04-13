@@ -361,6 +361,13 @@ void wideDecimalOrLongDouble(const uint64_t colProj,
         precisionAgg.push_back(precisionProj[colProj]);
         widthAgg.push_back(width[colProj]);
     }
+    else if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(type))
+    {
+        typeAgg.push_back(CalpontSystemCatalog::DECIMAL);
+        scaleAgg.push_back(0);
+        precisionAgg.push_back(datatypes::INT128MAXPRECISION);
+        widthAgg.push_back(datatypes::MAXDECIMALWIDTH);
+    }
     else
     {
         typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);

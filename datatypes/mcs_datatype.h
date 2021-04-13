@@ -360,7 +360,6 @@ static inline bool isWideDecimalType(const datatypes::SystemCatalog::ColDataType
           dt == SystemCatalog::UDECIMAL);
 }
 
-
 /** convenience function to determine if column type is a char
  *  type
  */
@@ -479,6 +478,14 @@ inline bool isSignedInteger(const datatypes::SystemCatalog::ColDataType type)
   }
 }
 
+/**
+    @brief The method netects whether type sum and avg aggregate will have
+    wide decimal underlying type
+*/
+inline bool hasUnderlyingWideDecimalForSumAndAvg(datatypes::SystemCatalog::ColDataType type)
+{
+    return datatypes::isSignedInteger(type) || datatypes::isUnsigned(type);// || datatypes::isDecimal(type);
+}
 
 /**
     @brief Returns true if all arguments have a DECIMAL/UDECIMAL type
