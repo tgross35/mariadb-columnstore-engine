@@ -4310,7 +4310,7 @@ void RowAggregationUMP2::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, 
     if (rowIn.isNullValue(colIn))
         return;
 
-    datatypes::SystemCatalog::ColDataType colDataType colDataType = rowIn.getColType(colIn);
+    datatypes::SystemCatalog::ColDataType colDataType = rowIn.getColType(colIn);
     long double valIn = 0;
     long double valOut = fRow.getLongDoubleField(colOut);
     bool isWideDataType = false;

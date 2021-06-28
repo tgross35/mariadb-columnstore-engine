@@ -1690,6 +1690,14 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
     // for count column of average function
     map<uint32_t, SP_ROWAGG_FUNC_t> avgFuncMap, avgDistFuncMap;
 
+     // collect the projected column info, prepare for aggregation
+    vector<uint32_t> width;
+    for (uint64_t i = 0; i < keysProj.size(); i++)
+    {
+        width.push_back(projRG.getColumnWidth(i));
+    }
+
+
     // associate the columns between projected RG and aggregate RG on UM
     // populated the aggregate columns
     //     the groupby columns are put in front, even not a returned column
@@ -1941,11 +1949,10 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
 
                     oidsAgg.push_back(oidsProj[colProj]);
                     keysAgg.push_back(aggKey);
-                    typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
                     csNumAgg.push_back(8);
-                    precisionAgg.push_back(-1);
-                    widthAgg.push_back(sizeof(long double));
-                    scaleAgg.push_back(0);
+                    wideDecimalOrLongDouble(colProj, typeProj[colProj],
+                                       precisionProj, scaleProj, width,
+                                       typeAgg, scaleAgg, precisionAgg, widthAgg);
                     colAgg++;
 
                 // has distinct step, put the count column for avg next to the sum
@@ -4173,11 +4180,10 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
 
                     oidsAggPm.push_back(oidsProj[colProj]);
                     keysAggPm.push_back(aggKey);
-                    typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
                     csNumAggPm.push_back(8);
-                    precisionAggPm.push_back(-1);
-                    widthAggPm.push_back(sizeof(long double));
-                    scaleAggPm.push_back(0);
+                    wideDecimalOrLongDouble(colProj, typeProj[colProj],
+                                             precisionProj, scaleProj, width,
+                                             typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
                     colAggPm++;
                 }
 
@@ -4553,11 +4559,10 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
 
                         oidsAggDist.push_back(oidsAggUm[colUm]);
                         keysAggDist.push_back(retKey);
-                        typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
                         csNumAggDist.push_back(8);
-                        precisionAggDist.push_back(-1);
-                        widthAggDist.push_back(sizeof(long double));
-                        scaleAggDist.push_back(0);
+                        wideDecimalOrLongDouble(colUm, typeAggPm[colUm],
+                                                precisionAggPm, scaleAggPm, widthAggPm,
+                                                typeAggDist, scaleAggDist, precisionAggDist, widthAggDist);
                     }
                     // PM: put the count column for avg next to the sum
                     // let fall through to add a count column for average function
