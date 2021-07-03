@@ -4626,11 +4626,16 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                             {
                                 oidsAggDist.push_back(oidsAggUm[colUm]);
                                 keysAggDist.push_back(retKey);
-                                scaleAggDist.push_back(0);
-                                typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
+//                                scaleAggDist.push_back(0);
+  //                              typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
                                 csNumAggDist.push_back(8);
-                                precisionAggDist.push_back(-1);
-                                widthAggDist.push_back(sizeof(long double));
+  //                              precisionAggDist.push_back(-1);
+  //                              widthAggDist.push_back(sizeof(long double));a
+                                wideDecimalOrLongDouble(colUm, typeAggPm[colUm],
+                                                        precisionAggPm, scaleAggPm, widthAggPm,
+                                                        typeAggDist, scaleAggDist, precisionAggDist, widthAggDist);
+  //
+  //
                             }
                             else
                             {
