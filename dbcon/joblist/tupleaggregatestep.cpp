@@ -1592,21 +1592,29 @@ void TupleAggregateStep::prep1PhaseAggregate(
         // sum(x)
         oidsAgg.push_back(oidsProj[j]);
         keysAgg.push_back(keysProj[j]);
-        scaleAgg.push_back(0);
-        precisionAgg.push_back(-1);
-        typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
+//        scaleAgg.push_back(0);
+//        precisionAgg.push_back(-1);
+//        typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
         csNumAgg.push_back(8);
-        widthAgg.push_back(sizeof(long double));
+        wideDecimalOrLongDouble(j, typeProj[j],
+                                precisionProj, scaleProj, width,
+                                typeAgg, scaleAgg, precisionAgg, widthAgg);
+//        widthAgg.push_back(sizeof(long double));
         ++lastCol;
 
         // sum(x**2)
         oidsAgg.push_back(oidsProj[j]);
         keysAgg.push_back(keysProj[j]);
-        scaleAgg.push_back(0);
-        precisionAgg.push_back(-1);
-        typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
+//        scaleAgg.push_back(0);
+//        precisionAgg.push_back(-1);
+//        typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
         csNumAgg.push_back(8);
-        widthAgg.push_back(sizeof(long double));
+//        widthAgg.push_back(sizeof(long double));
+
+        wideDecimalOrLongDouble(j, typeProj[j],
+                                precisionProj, scaleProj, width,
+                                typeAgg, scaleAgg, precisionAgg, widthAgg);
+
         ++lastCol;
     }
 
@@ -2019,23 +2027,29 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                     funct->fAuxColumnIndex = ++colAgg;
 
                     // sum(x)
+                    wideDecimalOrLongDouble(colProj, typeProj[colProj],
+                                            precisionProj, scaleProj, width,
+                                            typeAgg, scaleAgg, precisionAgg, widthAgg);
                     oidsAgg.push_back(oidsProj[colProj]);
                     keysAgg.push_back(aggKey);
-                    scaleAgg.push_back(0);
-                    precisionAgg.push_back(-1);
-                    typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
+                    //scaleAgg.push_back(0);
+                    //precisionAgg.push_back(-1);
+                    //typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
                     csNumAgg.push_back(8);
-                    widthAgg.push_back(sizeof(long double));
+                    //widthAgg.push_back(sizeof(long double));
                     ++colAgg;
 
                     // sum(x**2)
+                    wideDecimalOrLongDouble(colProj, typeProj[colProj],
+                                            precisionProj, scaleProj, width,
+                                            typeAgg, scaleAgg, precisionAgg, widthAgg);
                     oidsAgg.push_back(oidsProj[colProj]);
                     keysAgg.push_back(aggKey);
-                    scaleAgg.push_back(0);
-                    precisionAgg.push_back(-1);
-                    typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
+                    //scaleAgg.push_back(0);
+                    //precisionAgg.push_back(-1);
+                    //typeAgg.push_back(CalpontSystemCatalog::LONGDOUBLE);
                     csNumAgg.push_back(8);
-                    widthAgg.push_back(sizeof(long double));
+                    //widthAgg.push_back(sizeof(long double));
                     ++colAgg;
                 }
                 break;
@@ -2277,12 +2291,15 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                         throw IDBExcept(emsg, ERR_AGGREGATE_TYPE_NOT_SUPPORT);
                     }
 
+                    wideDecimalOrLongDouble(colAgg, typeProj[colAgg],
+                                          precisionProj, scaleProj, width,
+                                          typeAggDist, scaleAggDist, precisionAggDist, widthAggDist);
                     oidsAggDist.push_back(oidsAgg[colAgg]);
                     keysAggDist.push_back(retKey);
-                    typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
-                    csNumAggDist.push_back(8);
-                    precisionAggDist.push_back(-1);
-                    widthAggDist.push_back(sizeof(long double));
+//                    typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
+  //                  csNumAggDist.push_back(8);
+//                    precisionAggDist.push_back(-1);
+//                    widthAggDist.push_back(sizeof(long double));
                     scaleAggDist.push_back(0);
                 }
                 break;
@@ -2357,11 +2374,14 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
                                 {
                                     oidsAggDist.push_back(oidsAgg[colAgg]);
                                     keysAggDist.push_back(retKey);
-                                    scaleAggDist.push_back(0);
-                                    typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
+//                                    scaleAggDist.push_back(0);
+ //                                   typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
                                     csNumAggDist.push_back(8);
-                                    precisionAggDist.push_back(-1);
-                                    widthAggDist.push_back(sizeof(long double));
+  //                                  precisionAggDist.push_back(-1);
+  //                                  widthAggDist.push_back(sizeof(long double));
+                                   wideDecimalOrLongDouble(colAgg, typeProj[colAgg],
+                                                           precisionProj, scaleProj, width,
+                                                           typeAggDist, scaleAggDist, precisionAggDist, widthAggDist);
                                 }
                                 else
                                 {
@@ -2665,21 +2685,27 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(
             // sum(x)
             oidsAggDist.push_back(oidsAgg[j]);
             keysAggDist.push_back(keysAgg[j]);
-            scaleAggDist.push_back(0);
-            precisionAggDist.push_back(0);
-            typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
+            wideDecimalOrLongDouble(j, typeProj[j],
+                                    precisionProj, scaleProj, width,
+                                    typeAggDist, scaleAggDist, precisionAggDist, widthAggDist);
+//            scaleAggDist.push_back(0);
+//            precisionAggDist.push_back(0);
+//            typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
             csNumAggDist.push_back(8);
-            widthAggDist.push_back(sizeof(long double));
+//            widthAggDist.push_back(sizeof(long double));
             ++lastCol;
 
             // sum(x**2)
+            wideDecimalOrLongDouble(j, typeProj[j],
+                                    precisionProj, scaleProj, width,
+                                    typeAggDist, scaleAggDist, precisionAggDist, widthAggDist);
             oidsAggDist.push_back(oidsAgg[j]);
             keysAggDist.push_back(keysAgg[j]);
-            scaleAggDist.push_back(0);
-            precisionAggDist.push_back(-1);
-            typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
+            //scaleAggDist.push_back(0);
+            //precisionAggDist.push_back(-1);
+            //typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
             csNumAggDist.push_back(8);
-            widthAggDist.push_back(sizeof(long double));
+           // widthAggDist.push_back(sizeof(long double));
             ++lastCol;
         }
     }
@@ -3050,6 +3076,7 @@ void TupleAggregateStep::prep2PhasesAggregate(
     const vector<uint32_t>& keysProj = projRG.getKeys();
     const vector<uint32_t>& scaleProj = projRG.getScale();
     const vector<uint32_t>& precisionProj = projRG.getPrecision();
+    const vector<uint32_t>& widthProj = projRG.getColWidths();
     const vector<CalpontSystemCatalog::ColDataType>& typeProj = projRG.getColTypes();
     const vector<uint32_t>& csNumProj = projRG.getCharsetNumbers();
 
@@ -3346,23 +3373,29 @@ void TupleAggregateStep::prep2PhasesAggregate(
                     funct->fAuxColumnIndex = ++colAggPm;
 
                     // sum(x)
+                    wideDecimalOrLongDouble(colProj, typeProj[colProj],
+                                            precisionProj, scaleProj, width,
+                                            typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
                     oidsAggPm.push_back(oidsProj[colProj]);
                     keysAggPm.push_back(aggKey);
-                    scaleAggPm.push_back(0);
+                    //scaleAggPm.push_back(0);
                     precisionAggPm.push_back(-1);
-                    typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
+                    //typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
                     csNumAggPm.push_back(8);
-                    widthAggPm.push_back(sizeof(long double));
+                    //widthAggPm.push_back(sizeof(long double));
                     ++colAggPm;
 
                     // sum(x**2)
+                    wideDecimalOrLongDouble(colProj, typeProj[colProj],
+                                            precisionProj, scaleProj, width,
+                                            typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
                     oidsAggPm.push_back(oidsProj[colProj]);
                     keysAggPm.push_back(aggKey);
-                    scaleAggPm.push_back(0);
-                    precisionAggPm.push_back(-1);
-                    typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
+                    //scaleAggPm.push_back(0);
+                    //precisionAggPm.push_back(-1);
+                    //typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
                     csNumAggPm.push_back(8);
-                    widthAggPm.push_back(sizeof(long double));
+                    //widthAggPm.push_back(sizeof(long double));
                     ++colAggPm;
                 }
                 break;
@@ -3800,23 +3833,29 @@ void TupleAggregateStep::prep2PhasesAggregate(
             functionVecUm[i]->fAuxColumnIndex = lastCol;
 
             // sum(x)
+            wideDecimalOrLongDouble(j, typeProj[j],
+                                    precisionProj, scaleProj, widthProj,
+                                    typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
             oidsAggUm.push_back(oidsAggPm[j]);
             keysAggUm.push_back(keysAggPm[j]);
-            scaleAggUm.push_back(0);
-            precisionAggUm.push_back(-1);
-            typeAggUm.push_back(CalpontSystemCatalog::LONGDOUBLE);
+  //          scaleAggUm.push_back(0);
+    //        precisionAggUm.push_back(-1);
+      //      typeAggUm.push_back(CalpontSystemCatalog::LONGDOUBLE);
             csNumAggUm.push_back(8);
-            widthAggUm.push_back(sizeof(long double));
+        //    widthAggUm.push_back(sizeof(long double));
             ++lastCol;
 
             // sum(x**2)
+            wideDecimalOrLongDouble(j, typeProj[j],
+                                    precisionProj, scaleProj, widthProj,
+                                    typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
             oidsAggUm.push_back(oidsAggPm[j]);
             keysAggUm.push_back(keysAggPm[j]);
-            scaleAggUm.push_back(0);
-            precisionAggUm.push_back(-1);
-            typeAggUm.push_back(CalpontSystemCatalog::LONGDOUBLE);
+            //scaleAggUm.push_back(0);
+            //precisionAggUm.push_back(-1);
+            //typeAggUm.push_back(CalpontSystemCatalog::LONGDOUBLE);
             csNumAggUm.push_back(8);
-            widthAggUm.push_back(sizeof(long double));
+            //widthAggUm.push_back(sizeof(long double));
             ++lastCol;
         }
     }
@@ -3923,6 +3962,7 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
     const vector<uint32_t>& keysProj = projRG.getKeys();
     const vector<uint32_t>& scaleProj = projRG.getScale();
     const vector<uint32_t>& precisionProj = projRG.getPrecision();
+    const vector<uint32_t>& widthProj = projRG.getColWidths();
     const vector<CalpontSystemCatalog::ColDataType>& typeProj = projRG.getColTypes();
     const vector<uint32_t>& csNumProj = projRG.getCharsetNumbers();
 
@@ -4250,23 +4290,29 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                     funct->fAuxColumnIndex = ++colAggPm;
 
                     // sum(x)
+                    wideDecimalOrLongDouble(colProj, typeProj[colProj],
+                                            precisionProj, scaleProj, width,
+                                            typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
                     oidsAggPm.push_back(oidsProj[colProj]);
                     keysAggPm.push_back(aggKey);
-                    scaleAggPm.push_back(0);
-                    precisionAggPm.push_back(-1);
-                    typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
+//                    scaleAggPm.push_back(0);
+//                    precisionAggPm.push_back(-1);
+//                    typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
                     csNumAggPm.push_back(8);
-                    widthAggPm.push_back(sizeof(long double));
+//                    widthAggPm.push_back(sizeof(long double));
                     ++colAggPm;
 
                     // sum(x**2)
+                    wideDecimalOrLongDouble(colProj, typeProj[colProj],
+                                            precisionProj, scaleProj, width,
+                                            typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
                     oidsAggPm.push_back(oidsProj[colProj]);
                     keysAggPm.push_back(aggKey);
-                    scaleAggPm.push_back(0);
-                    precisionAggPm.push_back(-1);
-                    typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
+                    //scaleAggPm.push_back(0);
+                    //precisionAggPm.push_back(-1);
+                    //typeAggPm.push_back(CalpontSystemCatalog::LONGDOUBLE);
                     csNumAggPm.push_back(8);
-                    widthAggPm.push_back(sizeof(long double));
+                    //widthAggPm.push_back(sizeof(long double));
                     ++colAggPm;
                 }
                 break;
@@ -4631,8 +4677,8 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
                                 csNumAggDist.push_back(8);
   //                              precisionAggDist.push_back(-1);
   //                              widthAggDist.push_back(sizeof(long double));a
-                                wideDecimalOrLongDouble(colUm, typeAggPm[colUm],
-                                                        precisionAggPm, scaleAggPm, widthAggPm,
+                                wideDecimalOrLongDouble(colUm, typeAggUm[colUm],
+                                                        precisionAggUm, scaleAggUm, widthAggUm,
                                                         typeAggDist, scaleAggDist, precisionAggDist, widthAggDist);
   //
   //
@@ -4889,23 +4935,29 @@ void TupleAggregateStep::prep2PhasesDistinctAggregate(
             functionVecUm[i]->fAuxColumnIndex = lastCol;
 
             // sum(x)
+            wideDecimalOrLongDouble(j, typeProj[j],
+                                   precisionProj, scaleProj, widthProj,
+                                   typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
             oidsAggDist.push_back(oidsAggPm[j]);
             keysAggDist.push_back(keysAggPm[j]);
-            scaleAggDist.push_back(0);
-            precisionAggDist.push_back(-1);
-            typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
+ //           scaleAggDist.push_back(0);
+//            precisionAggDist.push_back(-1);
+//            typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
             csNumAggDist.push_back(8);
-            widthAggDist.push_back(sizeof(long double));
+//            widthAggDist.push_back(sizeof(long double));
             ++lastCol;
 
             // sum(x**2)
+            wideDecimalOrLongDouble(j, typeProj[j],
+                                   precisionProj, scaleProj, widthProj,
+                                   typeAggPm, scaleAggPm, precisionAggPm, widthAggPm);
             oidsAggDist.push_back(oidsAggPm[j]);
             keysAggDist.push_back(keysAggPm[j]);
-            scaleAggDist.push_back(0);
-            precisionAggDist.push_back(-1);
-            typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
+            //scaleAggDist.push_back(0);
+            //precisionAggDist.push_back(-1);
+            //typeAggDist.push_back(CalpontSystemCatalog::LONGDOUBLE);
             csNumAggDist.push_back(8);
-            widthAggDist.push_back(sizeof(long double));
+            //widthAggDist.push_back(sizeof(long double));
             ++lastCol;
         }
     }
