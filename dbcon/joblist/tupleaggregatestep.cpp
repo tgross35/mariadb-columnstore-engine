@@ -3187,7 +3187,6 @@ void TupleAggregateStep::prep2PhasesAggregate(
             typeAggPm.push_back(typeProj[colProj]);
             csNumAggPm.push_back(csNumProj[colProj]);
             widthAggPm.push_back(width[colProj]);
-            precisionAggPm.push_back(precisionProj[colProj]);
 
             aggFuncMap.insert(make_pair(boost::make_tuple(keysAggPm[colAggPm], 0, pUDAFFunc, udafc ? udafc->getContext().getParamKeys() : NULL), colAggPm));
             colAggPm++;
