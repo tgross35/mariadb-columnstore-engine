@@ -3158,7 +3158,7 @@ CalpontSystemCatalog::ColType colType_MysqlToIDB (const Item* item)
             ct.colDataType = CalpontSystemCatalog::VARCHAR;
 
             // MCOL-4758 the longest TEXT we deal with is 16777215 so
-            // limit to that. 
+            // limit to that.
             if (item->max_length < 16777215)
                 ct.colWidth = item->max_length;
             else
@@ -3758,6 +3758,13 @@ ArithmeticColumn* buildArithmeticColumn(
                 if (mysqlType.precision < mysqlType.scale)
                     mysqlType.precision = mysqlType.scale;
             }
+        }
+    }
+    else if (datatypes::isDecimal(leftColType.colDataType) || datatypes::isDecimal(rightColType.colDataType))
+    {
+        if (leftColType.colWidth == datatypes::MAXDECIMALWIDTH || rightColType.colWidth == datatypes::MAXDECIMALWIDTH)
+        {
+            mysqlType.colWidth = datatypes::MAXDECIMALWIDTH;
         }
     }
 
@@ -4735,7 +4742,7 @@ ReturnedColumn* buildAggregateColumn(Item* item, gp_walk_info& gwi)
 
     // Argument_count() is the # of formal parms to the agg fcn. Columnstore
     // only supports 1 argument except UDAnF, COUNT(DISTINC) and GROUP_CONCAT
-    if (isp->argument_count() != 1 
+    if (isp->argument_count() != 1
         && isp->sum_func() != Item_sum::COUNT_DISTINCT_FUNC
         && isp->sum_func() != Item_sum::GROUP_CONCAT_FUNC
         && isp->sum_func() != Item_sum::UDF_SUM_FUNC)
