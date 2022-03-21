@@ -1905,64 +1905,73 @@ void RowAggregation::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, int6
 //------------------------------------------------------------------------------
 void RowAggregation::doStatistics(const Row& rowIn, int64_t colIn, int64_t colOut, int64_t colAux)
 {
-  int colDataType = (fRowGroupIn.getColTypes())[colIn];
+  datatypes::SystemCatalog::ColDataType colDataType = (fRowGroupIn.getColTypes())[colIn];
 
   if (isNull(&fRowGroupIn, rowIn, colIn) == true)
     return;
 
   long double valIn = 0.0;
-
-  switch (colDataType)
+  int128_t wideValIn = 0;
+  if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType))
   {
-    case execplan::CalpontSystemCatalog::TINYINT:
-    case execplan::CalpontSystemCatalog::SMALLINT:
-    case execplan::CalpontSystemCatalog::MEDINT:
-    case execplan::CalpontSystemCatalog::INT:
-    case execplan::CalpontSystemCatalog::BIGINT: valIn = (long double)rowIn.getIntField(colIn); break;
+    wideValIn = rowIn.getIntField(colIn);
+  }
+  else {
+    switch (colDataType)
+    {
+      case execplan::CalpontSystemCatalog::DECIMAL:   // handle scale later
+      case execplan::CalpontSystemCatalog::UDECIMAL:  // handle scale later
+        if (LIKELY(fRowGroupIn.getColumnWidth(colIn) == datatypes::MAXDECIMALWIDTH))
+        {
+          // To save from unaligned memory
+          datatypes::TSInt128 val128In(rowIn.getBinaryField<int128_t>(colIn));
+          valIn = static_cast<long double>(val128In.toTFloat128());
+        }
+        else if (fRowGroupIn.getColumnWidth(colIn) <= datatypes::MAXLEGACYWIDTH)
+        {
+          valIn = (long double)rowIn.getIntField(colIn);
+        }
+        else
+        {
+          idbassert(false);
+        }
+        break;
 
-    case execplan::CalpontSystemCatalog::DECIMAL:   // handle scale later
-    case execplan::CalpontSystemCatalog::UDECIMAL:  // handle scale later
-      if (LIKELY(fRowGroupIn.getColumnWidth(colIn) == datatypes::MAXDECIMALWIDTH))
-      {
-        // To save from unaligned memory
-        datatypes::TSInt128 val128In(rowIn.getBinaryField<int128_t>(colIn));
-        valIn = static_cast<long double>(val128In.toTFloat128());
-      }
-      else if (fRowGroupIn.getColumnWidth(colIn) <= datatypes::MAXLEGACYWIDTH)
-      {
-        valIn = (long double)rowIn.getIntField(colIn);
-      }
-      else
-      {
-        idbassert(false);
-      }
-      break;
+      case execplan::CalpontSystemCatalog::DOUBLE:
+      case execplan::CalpontSystemCatalog::UDOUBLE:
+      case execplan::CalpontSystemCatalog::FLOAT:
+      case execplan::CalpontSystemCatalog::UFLOAT:
+        valIn = (long double)rowIn.getFloatField(colIn);
+        break;
 
-    case execplan::CalpontSystemCatalog::UTINYINT:
-    case execplan::CalpontSystemCatalog::USMALLINT:
-    case execplan::CalpontSystemCatalog::UMEDINT:
-    case execplan::CalpontSystemCatalog::UINT:
-    case execplan::CalpontSystemCatalog::UBIGINT: valIn = (long double)rowIn.getUintField(colIn); break;
+      case execplan::CalpontSystemCatalog::LONGDOUBLE:
+        valIn = rowIn.getLongDoubleField(colIn);
+        break;
 
-    case execplan::CalpontSystemCatalog::DOUBLE:
-    case execplan::CalpontSystemCatalog::UDOUBLE: valIn = (long double)rowIn.getDoubleField(colIn); break;
-
-    case execplan::CalpontSystemCatalog::FLOAT:
-    case execplan::CalpontSystemCatalog::UFLOAT: valIn = (long double)rowIn.getFloatField(colIn); break;
-
-    case execplan::CalpontSystemCatalog::LONGDOUBLE: valIn = rowIn.getLongDoubleField(colIn); break;
-
-    default:
-      std::ostringstream errmsg;
-      errmsg << "RowAggregation: no average for data type: " << colDataType;
-      cerr << errmsg.str() << endl;
-      throw logging::QueryDataExcept(errmsg.str(), logging::aggregateFuncErr);
-      break;
+      default:
+        std::ostringstream errmsg;
+        errmsg << "RowAggregation: no average for data type: " << colDataType;
+        cerr << errmsg.str() << endl;
+        throw logging::QueryDataExcept(errmsg.str(), logging::aggregateFuncErr);
+        break;
+    }
   }
 
   fRow.setDoubleField(fRow.getDoubleField(colOut) + 1.0, colOut);
-  fRow.setLongDoubleField(fRow.getLongDoubleField(colAux) + valIn, colAux);
-  fRow.setLongDoubleField(fRow.getLongDoubleField(colAux + 1) + valIn * valIn, colAux + 1);
+
+  if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType))
+  {
+    int128_t val = wideValIn + rowIn.getIntField(colAux);
+    int128_t val2 = wideValIn * wideValIn + rowIn.getIntField(colAux + 1);
+
+    fRow.setBinaryField(&val, colAux);
+    fRow.setBinaryField(&val2, colAux + 1);
+  }
+  else
+  {
+    fRow.setLongDoubleField(fRow.getLongDoubleField(colAux) + valIn, colAux);
+    fRow.setLongDoubleField(fRow.getLongDoubleField(colAux + 1) + valIn * valIn, colAux + 1);
+  }
 }
 
 void RowAggregation::mergeStatistics(const Row& rowIn, uint64_t colOut, uint64_t colAux)
@@ -3129,6 +3138,8 @@ void RowAggregationUM::calculateStatisticsFunctions()
         int64_t colOut = fFunctionCols[i]->fOutputColumnIndex;
         int64_t colAux = fFunctionCols[i]->fAuxColumnIndex;
 
+       // datatypes::SystemCatalog::ColDataType colDataType = (fRowGroupIn.getColTypes())[colAux];
+
         double cnt = fRow.getDoubleField(colOut);
 
         if (fFunctionCols[i]->fAggFunction == ROWAGG_STATS)
@@ -3156,31 +3167,64 @@ void RowAggregationUM::calculateStatisticsFunctions()
         }
         else  // count > 1
         {
-          long double sum1 = fRow.getLongDoubleField(colAux);
-          long double sum2 = fRow.getLongDoubleField(colAux + 1);
-
-          uint32_t scale = fRow.getScale(colOut);
-          auto factor = datatypes::scaleDivisor<long double>(scale);
-
-          if (scale != 0)  // adjust the scale if necessary
+//          if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType))
+          if (true)
           {
-            sum1 /= factor;
-            sum2 /= factor * factor;
+            int128_t sum1 = *fRow.getBinaryField<int128_t>(colAux);
+            int128_t sum2 = *fRow.getBinaryField<int128_t>(colAux + 1);
+
+            uint32_t scale = fRow.getScale(colOut);
+            auto factor = datatypes::scaleDivisor<int128_t>(scale);
+
+            if (scale != 0)  // adjust the scale if necessary
+            {
+              sum1 /= factor;
+              sum2 /= factor * factor;
+            }
+
+            long double stat = sum1 * sum1 / cnt;
+            stat = sum2 - stat;
+
+            if (fFunctionCols[i]->fStatsFunction == ROWAGG_STDDEV_POP)
+              stat = sqrt(stat / cnt);
+            else if (fFunctionCols[i]->fStatsFunction == ROWAGG_STDDEV_SAMP)
+              stat = sqrt(stat / (cnt - 1));
+            else if (fFunctionCols[i]->fStatsFunction == ROWAGG_VAR_POP)
+              stat = stat / cnt;
+            else if (fFunctionCols[i]->fStatsFunction == ROWAGG_VAR_SAMP)
+              stat = stat / (cnt - 1);
+
+            fRow.setDoubleField(stat, colOut);
+          }
+          else
+          {
+            long double sum1 = fRow.getLongDoubleField(colAux);
+            long double sum2 = fRow.getLongDoubleField(colAux + 1);
+
+            uint32_t scale = fRow.getScale(colOut);
+            auto factor = datatypes::scaleDivisor<long double>(scale);
+
+            if (scale != 0)  // adjust the scale if necessary
+            {
+              sum1 /= factor;
+              sum2 /= factor * factor;
+            }
+
+            long double stat = sum1 * sum1 / cnt;
+            stat = sum2 - stat;
+
+            if (fFunctionCols[i]->fStatsFunction == ROWAGG_STDDEV_POP)
+              stat = sqrt(stat / cnt);
+            else if (fFunctionCols[i]->fStatsFunction == ROWAGG_STDDEV_SAMP)
+              stat = sqrt(stat / (cnt - 1));
+            else if (fFunctionCols[i]->fStatsFunction == ROWAGG_VAR_POP)
+              stat = stat / cnt;
+            else if (fFunctionCols[i]->fStatsFunction == ROWAGG_VAR_SAMP)
+              stat = stat / (cnt - 1);
+
+            fRow.setDoubleField(stat, colOut);
           }
 
-          long double stat = sum1 * sum1 / cnt;
-          stat = sum2 - stat;
-
-          if (fFunctionCols[i]->fStatsFunction == ROWAGG_STDDEV_POP)
-            stat = sqrt(stat / cnt);
-          else if (fFunctionCols[i]->fStatsFunction == ROWAGG_STDDEV_SAMP)
-            stat = sqrt(stat / (cnt - 1));
-          else if (fFunctionCols[i]->fStatsFunction == ROWAGG_VAR_POP)
-            stat = stat / cnt;
-          else if (fFunctionCols[i]->fStatsFunction == ROWAGG_VAR_SAMP)
-            stat = stat / (cnt - 1);
-
-          fRow.setDoubleField(stat, colOut);
         }
       }
     }
@@ -4289,10 +4333,28 @@ void RowAggregationUMP2::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, 
 //------------------------------------------------------------------------------
 void RowAggregationUMP2::doStatistics(const Row& rowIn, int64_t colIn, int64_t colOut, int64_t colAux)
 {
-  fRow.setDoubleField(fRow.getDoubleField(colOut) + rowIn.getDoubleField(colIn), colOut);
-  fRow.setLongDoubleField(fRow.getLongDoubleField(colAux) + rowIn.getLongDoubleField(colIn + 1), colAux);
-  fRow.setLongDoubleField(fRow.getLongDoubleField(colAux + 1) + rowIn.getLongDoubleField(colIn + 2),
-                          colAux + 1);
+  datatypes::SystemCatalog::ColDataType colDataType = rowIn.getColType(colIn);
+
+  fRow.setIntField(fRow.getIntField(colOut) + rowIn.getIntField(colIn), colOut);
+
+  if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType))
+  {
+    int128_t colAuxVal1 = *fRow.getBinaryField<int128_t>(colAux);
+    int128_t colInVal1 = *fRow.getBinaryField<int128_t>(colIn + 1);
+    int128_t sum1 = colAuxVal1 + colInVal1;
+    fRow.setBinaryField(&sum1, colAux);
+
+    int128_t colAuxVal2 = *fRow.getBinaryField<int128_t>(colAux + 1);
+    int128_t colInVal2 = *fRow.getBinaryField<int128_t>(colIn + 2);
+    int128_t sum2 = colAuxVal2 + colInVal2;
+    fRow.setBinaryField(&sum2, colAux+1);
+  }
+  else
+  {
+    fRow.setLongDoubleField(fRow.getLongDoubleField(colAux) + rowIn.getLongDoubleField(colIn + 1), colAux);
+    fRow.setLongDoubleField(fRow.getLongDoubleField(colAux + 1) + rowIn.getLongDoubleField(colIn + 2),
+                            colAux + 1);
+  }
 }
 
 //------------------------------------------------------------------------------
