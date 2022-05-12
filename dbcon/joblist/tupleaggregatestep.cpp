@@ -1920,7 +1920,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(JobInfo& jobInfo, vector<Ro
           wideDecimalOrLongDouble(colProj, typeProj[colProj], precisionProj, scaleProj, width,
                                   typeAgg, scaleAgg, precisionAgg, widthAgg);
 
-          widthAgg.push_back(sizeof(long double));
+          // widthAgg.push_back(sizeof(long double));
           ++colAgg;
         }
         break;
@@ -2574,7 +2574,7 @@ void TupleAggregateStep::prep1PhaseDistinctAggregate(JobInfo& jobInfo, vector<Ro
 
       functionVec2[i]->fAuxColumnIndex = lastCol;
 
-      // sum(x)
+      // sum(x)P
       oidsAggDist.push_back(oidsAgg[j]);
       keysAggDist.push_back(keysAgg[j]);
       csNumAggDist.push_back(8);

@@ -1961,8 +1961,8 @@ void RowAggregation::doStatistics(const Row& rowIn, int64_t colIn, int64_t colOu
 
   if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType))
   {
-    int128_t val = wideValIn + rowIn.getIntField(colAux);
-    int128_t val2 = wideValIn * wideValIn + rowIn.getIntField(colAux + 1);
+    int128_t val = wideValIn + fRow.getTSInt128Field(colAux).getValue();
+    int128_t val2 = wideValIn * wideValIn + fRow.getTSInt128Field(colAux + 1).getValue();
 
     fRow.setBinaryField(&val, colAux);
     fRow.setBinaryField(&val2, colAux + 1);
@@ -3170,8 +3170,8 @@ void RowAggregationUM::calculateStatisticsFunctions()
 //          if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType))
           if (true)
           {
-            int128_t sum1 = *fRow.getBinaryField<int128_t>(colAux);
-            int128_t sum2 = *fRow.getBinaryField<int128_t>(colAux + 1);
+            int128_t sum1 = fRow.getTSInt128Field(colAux).getValue();
+            int128_t sum2 = fRow.getTSInt128Field(colAux + 1).getValue();
 
             uint32_t scale = fRow.getScale(colOut);
             auto factor = datatypes::scaleDivisor<int128_t>(scale);
@@ -3182,7 +3182,7 @@ void RowAggregationUM::calculateStatisticsFunctions()
               sum2 /= factor * factor;
             }
 
-            long double stat = sum1 * sum1 / cnt;
+            long double stat = static_cast<long double>(sum1) * (static_cast<long double>(sum1) / (cnt));
             stat = sum2 - stat;
 
             if (fFunctionCols[i]->fStatsFunction == ROWAGG_STDDEV_POP)
@@ -4333,21 +4333,21 @@ void RowAggregationUMP2::doAvg(const Row& rowIn, int64_t colIn, int64_t colOut, 
 //------------------------------------------------------------------------------
 void RowAggregationUMP2::doStatistics(const Row& rowIn, int64_t colIn, int64_t colOut, int64_t colAux)
 {
-  datatypes::SystemCatalog::ColDataType colDataType = rowIn.getColType(colIn);
+  datatypes::SystemCatalog::ColDataType colDataType = rowIn.getColType(colAux);
 
   fRow.setIntField(fRow.getIntField(colOut) + rowIn.getIntField(colIn), colOut);
 
-  if (datatypes::hasUnderlyingWideDecimalForSumAndAvg(colDataType))
+  if (datatypes::isWideDecimalType(colDataType, rowIn.getColumnWidth(colAux)))
   {
-    int128_t colAuxVal1 = *fRow.getBinaryField<int128_t>(colAux);
-    int128_t colInVal1 = *fRow.getBinaryField<int128_t>(colIn + 1);
+    int128_t colAuxVal1 = fRow.getTSInt128Field(colAux).getValue();
+    int128_t colInVal1 = rowIn.getTSInt128Field(colIn + 1).getValue();
     int128_t sum1 = colAuxVal1 + colInVal1;
     fRow.setBinaryField(&sum1, colAux);
 
-    int128_t colAuxVal2 = *fRow.getBinaryField<int128_t>(colAux + 1);
-    int128_t colInVal2 = *fRow.getBinaryField<int128_t>(colIn + 2);
+    int128_t colAuxVal2 = fRow.getTSInt128Field(colAux + 1).getValue();
+    int128_t colInVal2 = rowIn.getTSInt128Field(colIn + 2).getValue();
     int128_t sum2 = colAuxVal2 + colInVal2;
-    fRow.setBinaryField(&sum2, colAux+1);
+    fRow.setBinaryField(&sum2, colAux + 1);
   }
   else
   {
