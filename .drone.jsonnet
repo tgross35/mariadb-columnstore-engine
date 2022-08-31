@@ -11,13 +11,13 @@ local servers = {
 };
 
 local platforms_arm = {
-  develop: ['centos:7', 'rockylinux:8', 'rockylinux:9', 'debian:11', 'ubuntu:20.04', 'ubuntu:22.04'],
+  develop: ['rockylinux:8', 'rockylinux:9', 'debian:11', 'ubuntu:20.04', 'ubuntu:22.04'],
   'develop-6': ['rockylinux:8'],
 };
 
 local any_branch = '**';
-local platforms_custom = ['centos:7', 'rockylinux:8', 'debian:11', 'ubuntu:20.04', 'ubuntu:22.04'];
-local platforms_arm_custom = ['rockylinux:8'];
+local platforms_custom = ['centos:7'];
+local platforms_arm_custom = ['centos:7'];
 
 local platforms_mtr = ['centos:7', 'rockylinux:8', 'ubuntu:20.04'];
 
@@ -233,7 +233,8 @@ local Pipeline(branch, platform, event, arch='amd64', server='10.9') = {
     name: 'regression',
     depends_on: ['smoke'],
     image: 'docker:git',
-    [if event == 'cron' then 'failure']: 'ignore',
+    [if (event == 'cron' || arch == 'arm64') then 'failure']: 'ignore',
+
     volumes: [pipeline._volumes.docker, pipeline._volumes.mdb],
     environment: {
       REGRESSION_TESTS: if (event == 'cron') then '' else '${REGRESSION_TESTS:-' + regression_tests + '}',
