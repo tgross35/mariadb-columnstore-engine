@@ -8,8 +8,6 @@
  the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-
-
 #include "rewrites.h"
 #include <typeinfo>
 #include "objectreader.h"
@@ -41,7 +39,6 @@ void printContainer(std::ostream& os, const T& container, const std::string& del
   }
   os << std::endl;
 }
-
 
 using CommonContainer =
     std::pair<std::set<execplan::ParseTree*, NodeSemanticComparator>, std::set<execplan::ParseTree*>>;
@@ -83,6 +80,13 @@ enum class ChildType
   Leave
 };
 
+enum class GoTo
+{
+  Left,
+  Right,
+  Up
+};
+
 void printTreeLevel(execplan::ParseTree* root, int level)
 {
 #if debug_rewrites
@@ -110,44 +114,104 @@ bool simpleFiltersCmp(const SimpleFilter* left, const SimpleFilter* right)
 }
 
 // Walk the tree and find out common conjuctions
-void collectCommonConjuctions(execplan::ParseTree* root, CommonContainer& accumulator, int level = 0,
-                              bool orMeeted = false, bool andParent = false)
+struct StackFrameWithSet
+{
+  execplan::ParseTree* node;
+  GoTo direction;
+  bool orMet;
+  bool andParent;
+  CommonContainer localset;
+  StackFrameWithSet(execplan::ParseTree* node_, GoTo direction_, bool orMet_ = false, bool andParent_ = false)
+   : node(node_), direction(direction_), orMet(orMet_), andParent(andParent_), localset({{}, {}})
+  {
+  }
+};
+
+void advanceSetUp(std::vector<StackFrameWithSet>& stack, CommonContainer& accumulator)
+{
+  if (stack.size() == 1)
+    accumulator = stack.back().localset;
+  else
+  {
+    auto sz = stack.size();
+    if (operatorType(stack.at(sz - 2).node) == OP_OR)
+    {
+      if (stack.at(sz - 2).direction == GoTo::Right)
+        stack[sz - 2].localset = stack.back().localset;
+      else
+      {
+        CommonContainer intsersection;
+        std::set_intersection(stack[sz - 2].localset.first.begin(), stack[sz - 2].localset.first.end(),
+                              stack.back().localset.first.begin(), stack.back().localset.first.end(),
+                              std::inserter(intsersection.first, intsersection.first.begin()),
+                              NodeSemanticComparator{});
+        stack[sz - 2].localset.first = intsersection.first;
+      }
+    }
+    else
+    {
+      if (stack.at(sz - 2).direction == GoTo::Right)
+        stack[sz - 2].localset = stack.back().localset;
+      else
+      {
+        std::set_union(stack[sz - 2].localset.first.begin(), stack[sz - 2].localset.first.end(),
+                       stack.back().localset.first.begin(), stack.back().localset.first.end(),
+                       std::inserter(stack[sz - 2].localset.first, stack[sz - 2].localset.first.begin()),
+                       NodeSemanticComparator{});
+      }
+    }
+  }
+}
+
+void collectCommonConjuctions(execplan::ParseTree* root, CommonContainer& accumulator)
 {
   if (root == nullptr)
   {
     return;
   }
 
-  printTreeLevel(root, level);
-  // the condition below means leaf node
-  if (root->left() == nullptr && root->right() == nullptr && orMeeted && andParent)
+  std::vector<StackFrameWithSet> stack;
+  stack.emplace_back(root, GoTo::Left);
+  while (!stack.empty())
   {
-    // we want to collect it if it is a child of and node and or node was met before
-    if (castToFilter(root))
+    auto [node, dir, orMet, andParent, localset] = stack.back();
+
+    if (dir == GoTo::Left)
     {
-      accumulator.first.insert(root);
+      stack.back().direction = GoTo::Right;
+      if (node->left() != nullptr)
+      {
+        if (operatorType(node) == OP_OR)
+          stack.emplace_back(node->left(), GoTo::Left, true);
+        else
+          stack.emplace_back(node->left(), GoTo::Left, orMet, operatorType(node) == OP_AND);
+      }
+      continue;
     }
-    return;
+    else if (dir == GoTo::Right)
+    {
+      stack.back().direction = GoTo::Up;
+      if (node->right() != nullptr)
+      {
+        if (operatorType(node) == OP_OR)
+          stack.emplace_back(node->right(), GoTo::Left, true);
+        else
+          stack.emplace_back(node->right(), GoTo::Left, orMet, operatorType(node) == OP_AND);
+      }
+      continue;
+    }
+    else
+    {
+      if (node->left() == nullptr && node->right() == nullptr && orMet && andParent)
+      {
+        if (castToFilter(node))
+          stack.back().localset.first.insert(node);
+      }
+      advanceSetUp(stack, accumulator);
+      stack.pop_back();
+      continue;
+    }
   }
-  // we do set intersection for all the lower levels for the or node
-  if (operatorType(root) == OP_OR)
-  {
-    CommonContainer leftAcc;
-    CommonContainer rightAcc;
-    collectCommonConjuctions(root->left(), leftAcc, ++level, true, false);
-    collectCommonConjuctions(root->right(), rightAcc, ++level, true, false);
-    CommonContainer intersection;
-    std::set_intersection(leftAcc.first.begin(), leftAcc.first.end(), rightAcc.first.begin(),
-                          rightAcc.first.end(), std::inserter(intersection.first, intersection.first.begin()),
-                          NodeSemanticComparator{});
-
-    accumulator = intersection;
-    return;
-  }
-
-  collectCommonConjuctions(root->left(), accumulator, ++level, orMeeted, operatorType(root) == OP_AND);
-  collectCommonConjuctions(root->right(), accumulator, ++level, orMeeted, operatorType(root) == OP_AND);
-  return;
 }
 
 // this utility function creates new and node
@@ -190,13 +254,6 @@ execplan::ParseTree* appendToRoot(execplan::ParseTree* tree, const Common& commo
 
   return result;
 }
-
-enum class GoTo
-{
-  Left,
-  Right,
-  Up
-};
 
 struct StackFrame
 {
@@ -270,18 +327,18 @@ void fixUpTree(execplan::ParseTree** node, ChildType ltype, ChildType rtype,
 {
   if (ltype == ChildType::Leave)
   {
-    if (rtype != ChildType::Leave) // if we don't leave the right node, we replace
-    {                              // the parent node with the left child
+    if (rtype != ChildType::Leave)  // if we don't leave the right node, we replace
+    {                               // the parent node with the left child
       execplan::ParseTree* oldNode = *node;
-      if (rtype == ChildType::Delete) // we delete the node that is a duplicate
-        deleteOneNode((*node)->rightRef()); // of something in the common
+      if (rtype == ChildType::Delete)        // we delete the node that is a duplicate
+        deleteOneNode((*node)->rightRef());  // of something in the common
       *node = (*node)->left();
       deleteOneNode(&oldNode);
     }
   }
   else
   {
-    if (ltype == ChildType::Delete) // same as above
+    if (ltype == ChildType::Delete)  // same as above
       deleteOneNode((*node)->leftRef());
     if (rtype == ChildType::Leave)  // replace the parent with the right child
     {
@@ -417,7 +474,6 @@ execplan::OpType oppositeOperator(execplan::OpType op)
 
   return op;
 }
-
 
 template execplan::ParseTree* extractCommonLeafConjunctionsToRoot<false>(execplan::ParseTree* tree);
 template execplan::ParseTree* extractCommonLeafConjunctionsToRoot<true>(execplan::ParseTree* tree);
