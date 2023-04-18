@@ -232,19 +232,65 @@ ParseTree* ObjectReader::createParseTree(messageqcpp::ByteStream& b)
 {
   CLASSID id = ZERO;
   ParseTree* ret;
-
+  DFSStack stack;
   b >> (id_t&)id;
 
   if (id == NULL_CLASS)
     return NULL;
-
   if (id != PARSETREE)
     throw UnserializeException("Not a ParseTree");
 
   ret = new ParseTree();
-  ret->left(createParseTree(b));
-  ret->right(createParseTree(b));
-  ret->data(createTreeNode(b));
+  stack.emplace_back(ret);
+  while (!stack.empty())
+  {
+    auto [node, dir] = stack.back();
+    if (dir == ParseTree::GoTo::Left)
+    {
+      id = ZERO;
+      ParseTree* cur = NULL;
+      b >> (id_t&)id;
+
+      if (id == NULL_CLASS)
+      {
+        stack.back().node->left(cur);
+        stack.back().direction = ParseTree::GoTo::Right;
+        continue;
+      }
+      if (id != PARSETREE)
+        throw UnserializeException("Not a ParseTree");
+
+      cur = new ParseTree();
+      stack.back().direction = ParseTree::GoTo::Right;
+      stack.back().node->left(cur);
+      stack.emplace_back(node->left());
+    }
+    else if (dir == ParseTree::GoTo::Right)
+    {
+      id = ZERO;
+      ParseTree* cur = NULL;
+      b >> (id_t&)id;
+
+      if (id == NULL_CLASS)
+      {
+        stack.back().node->right(cur);
+        stack.back().direction = ParseTree::GoTo::Up;
+        continue;
+      }
+      if (id != PARSETREE)
+        throw UnserializeException("Not a ParseTree");
+
+      cur = new ParseTree();
+      stack.back().direction = ParseTree::GoTo::Up;
+      stack.back().node->right(cur);
+      stack.emplace_back(node->right());
+    }
+    else
+    {
+      stack.back().node->data(createTreeNode(b));
+      stack.pop_back();
+    }
+  }
   return ret;
 }
 
