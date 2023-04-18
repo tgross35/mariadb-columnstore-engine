@@ -195,14 +195,37 @@ void ObjectReader::writeParseTree(const ParseTree* tree, messageqcpp::ByteStream
     return;
   }
 
-  b << (id_t)PARSETREE;
-  writeParseTree(tree->left(), b);
-  writeParseTree(tree->right(), b);
-
-  if (tree->data() == NULL)
-    b << (id_t)NULL_CLASS;
-  else
-    tree->data()->serialize(b);
+  DFSStack stack;
+  stack.emplace_back(const_cast<ParseTree*>(tree));
+  while (!stack.empty())
+  {
+    auto [node, dir] = stack.back();
+    if (node == NULL)
+    {
+      b << (id_t)NULL_CLASS;
+      stack.pop_back();
+      continue;
+    }
+    if (dir == ParseTree::GoTo::Left)
+    {
+      b << (id_t)PARSETREE;
+      stack.back().direction = ParseTree::GoTo::Right;
+      stack.emplace_back(node->left());
+    }
+    else if (dir == ParseTree::GoTo::Right)
+    {
+      stack.back().direction = ParseTree::GoTo::Up;
+      stack.emplace_back(node->right());
+    }
+    else
+    {
+      if (node->data() == NULL)
+        b << (id_t)NULL_CLASS;
+      else
+        node->data()->serialize(b);
+      stack.pop_back();
+    }
+  }
 }
 
 ParseTree* ObjectReader::createParseTree(messageqcpp::ByteStream& b)
