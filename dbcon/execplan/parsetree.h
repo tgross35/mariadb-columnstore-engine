@@ -398,29 +398,52 @@ using DFSStack = std::vector<ParseTree::StackFrame>;
 
 inline ParseTree::~ParseTree()
 {
-  DFSStack stack;
-  stack.emplace_back(this);
-  while (!stack.empty())
+  if (fLeft == nullptr && fRight == nullptr)
   {
-    auto [node, dir] = stack.back();
-    if (dir == GoTo::Left)
+    delete fData;
+    fData = nullptr;
+  }
+  else
+  {
+    DFSStack stack;
+    stack.emplace_back(this);
+    while (!stack.empty())
     {
-      stack.back().direction = GoTo::Right;
-      if (node->fLeft != nullptr)
-        stack.emplace_back(node->fLeft);
-    }
-    else if (dir == GoTo::Right)
-    {
-      stack.back().direction = GoTo::Up;
-      if (node->fRight != nullptr)
-        stack.emplace_back(node->fRight);
-    }
-    else
-    {
-      delete stack.back().node->fData;
-      stack.back().node->fData = NULL;
-      stack.back().node = NULL;
-      stack.pop_back();
+      auto [node, dir] = stack.back();
+      if (dir == GoTo::Left)
+      {
+        stack.back().direction = GoTo::Right;
+        if (node->fLeft != nullptr)
+        {
+          stack.emplace_back(node->fLeft);
+        }
+      }
+      else if (dir == GoTo::Right)
+      {
+        stack.back().direction = GoTo::Up;
+        if (node->fRight != nullptr)
+        {
+          stack.emplace_back(node->fRight);
+        }
+      }
+      else
+      {
+        if (stack.size() == 1)
+        {
+          node->fLeft = nullptr;
+          node->fRight = nullptr;
+          delete fData;
+          fData = nullptr;
+          stack.pop_back();
+        }
+        else
+        {
+          node->fLeft = nullptr;
+          node->fRight = nullptr;
+          delete node;
+          stack.pop_back();
+        }
+      }
     }
   }
 }
