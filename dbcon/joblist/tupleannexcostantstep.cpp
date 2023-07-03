@@ -97,7 +97,6 @@ TupleAnnexConstantStep::TupleAnnexConstantStep(const JobInfo& jobInfo)
  , fLimitCount(-1)
  , fLimitHit(false)
  , fEndOfResult(false)
- , fParallelOp(false)
  , fFeInstance(funcexp::FuncExp::instance())
  , fJobList(jobInfo.jobListPtr)
  , fFinishedThreads(0)
@@ -108,11 +107,7 @@ TupleAnnexConstantStep::TupleAnnexConstantStep(const JobInfo& jobInfo)
 
 TupleAnnexConstantStep::~TupleAnnexConstantStep()
 {
-  if (fParallelOp)
-  {
-    fInputIteratorsList.clear();
-    fRunnersList.clear();
-  }
+
 }
 
 void TupleAnnexConstantStep::setOutputRowGroup(const rowgroup::RowGroup& rg)
@@ -123,7 +118,6 @@ void TupleAnnexConstantStep::setOutputRowGroup(const rowgroup::RowGroup& rg)
 void TupleAnnexConstantStep::initialize(const RowGroup& rgIn, const JobInfo& jobInfo)
 {
   // Initialize structures used by separate workers
-  uint64_t id = 1;
   fRowGroupIn = rgIn;
   fRowGroupIn.initRow(&fRowIn);
 
@@ -177,54 +171,20 @@ void TupleAnnexConstantStep::run()
     fOutputIterator = fOutputDL->getIterator();
   }
 
-  if (fParallelOp)
-  {
-    // Indexing begins with 1
-    fRunnersList.resize(fMaxThreads);
-    fInputIteratorsList.resize(fMaxThreads + 1);
 
-    // Activate stats collecting before CS spawns threads.
-    if (traceOn())
-      dlTimes.setFirstReadTime();
+  fInputDL = fInputJobStepAssociation.outAt(0)->rowGroupDL();
+  if (fInputDL == NULL)
+    throw logic_error("Input is not a RowGroup data list.");
 
-    // *DRRTUY Make this block conditional
-    StepTeleStats sts;
-    sts.query_uuid = fQueryUuid;
-    sts.step_uuid = fStepUuid;
-    sts.msg_type = StepTeleStats::ST_START;
-    sts.total_units_of_work = 1;
-    postStepStartTele(sts);
-
-    for (uint32_t id = 1; id <= fMaxThreads; id++)
-    {
-      fInputIteratorsList[id] = fInputDL->getIterator();
-      fRunnersList[id - 1] = jobstepThreadPool.invoke(Runner(this, id));
-    }
-  }
-  else
-  {
-    fInputDL = fInputJobStepAssociation.outAt(0)->rowGroupDL();
-
-    if (fInputDL == NULL)
-      throw logic_error("Input is not a RowGroup data list.");
-
-    fInputIterator = fInputDL->getIterator();
-    fRunner = jobstepThreadPool.invoke(Runner(this));
-  }
+  fInputIterator = fInputDL->getIterator();
+  fRunner = jobstepThreadPool.invoke([this](){this->execute();});
 }
 
 void TupleAnnexConstantStep::join()
 {
-  if (fParallelOp)
+  if (fRunner)
   {
-    jobstepThreadPool.join(fRunnersList);
-  }
-  else
-  {
-    if (fRunner)
-    {
-      jobstepThreadPool.join(fRunner);
-    }
+    jobstepThreadPool.join(fRunner);
   }
 }
 
@@ -348,10 +308,10 @@ void TupleAnnexConstantStep::executeNoOrderBy()
           continue;
         }
 
-        if (fConstant)
-          fConstant->fillInConstants(fRowIn, fRowOut);
-        else
-          copyRow(fRowIn, &fRowOut);
+        //if (fConstant)
+        //  fConstant->fillInConstants(fRowIn, fRowOut);
+        //else
+        copyRow(fRowIn, &fRowOut);
 
         fRowGroupOut.incRowCount();
 

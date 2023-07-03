@@ -61,6 +61,7 @@ using namespace dataconvert;
 #include "expressionstep.h"
 #include "subquerystep.h"
 #include "tupleaggregatestep.h"
+#include "tupleannexconstantstep.h"
 #include "tupleannexstep.h"
 #include "tupleconstantstep.h"
 #include "tuplehashjoin.h"
@@ -555,6 +556,38 @@ void adjustLastStep(JobStepVector& querySteps, DeliveredTableMap& deliverySteps,
     dynamic_cast<TupleAnnexStep*>(jobInfo.annexStep.get())->initialize(rg2, jobInfo);
     deliverySteps[CNX_VTABLE_ID] = jobInfo.annexStep;
   }
+
+  SJSTEP acs;
+  TupleAnnexStep* as = dynamic_cast<TupleAnnexStep*>(deliverySteps[CNX_VTABLE_ID].get());
+  RowGroup rg2 = as->getDeliveredRowGroup();
+
+  if (jobInfo.trace)
+
+    cout << "Output RowGroup 2: " << rg2.toString() << endl;
+
+  AnyDataListSPtr spdlIn(new AnyDataList());
+  RowGroupDL* dlIn;
+  if (jobInfo.orderByColVec.size() > 0)
+    dlIn = new RowGroupDL(jobInfo.orderByThreads, jobInfo.fifoSize);
+  else
+    dlIn = new RowGroupDL(1, jobInfo.fifoSize);
+  dlIn->OID(CNX_VTABLE_ID);
+  spdlIn->rowGroupDL(dlIn);
+  JobStepAssociation jsaIn;
+  jsaIn.outAdd(spdlIn);
+  dynamic_cast<JobStep*>(as)->outputAssociation(jsaIn);
+  acs->inputAssociation(jsaIn);
+  AnyDataListSPtr spdlOut(new AnyDataList());
+  RowGroupDL* dlOut = new RowGroupDL(1, jobInfo.fifoSize);
+  dlOut->OID(CNX_VTABLE_ID);
+  spdlOut->rowGroupDL(dlOut);
+  JobStepAssociation jsaOut;
+  jsaOut.outAdd(spdlOut);
+  acs->outputAssociation(jsaOut);
+
+  querySteps.push_back(acs);
+  dynamic_cast<TupleAnnexStep*>(acs.get())->initialize(rg2, jobInfo);
+  deliverySteps[CNX_VTABLE_ID] = acs;
 
   // Check if constant false
   if (jobInfo.constantFalse)

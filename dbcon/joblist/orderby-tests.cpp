@@ -29,6 +29,7 @@
 #include "funcexp.h"
 #include "jlf_common.h"
 #include "tupleannexstep.h"
+#include "tupleannexconstantstep.h"
 #include "calpontsystemcatalog.h"
 #include "resourcemanager.h"
 #include <boost/any.hpp>

@@ -29,6 +29,7 @@ using namespace std;
 #include "windowfunctionstep.h"
 #include "tupleaggregatestep.h"
 #include "tupleannexstep.h"
+#include "tupleannexconstantstep.h"
 #include "tuplehashjoin.h"
 #include "tupleunion.h"
 using namespace joblist;

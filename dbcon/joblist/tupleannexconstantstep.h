@@ -54,10 +54,7 @@ class TupleAnnexConstantStep : public JobStep, public TupleDeliveryStep
     fLimitStart = s;
     fLimitCount = c;
   }
-  void setParallelOp()
-  {
-    fParallelOp = true;
-  }
+
   void setMaxThreads(uint32_t number)
   {
     fMaxThreads = number;
@@ -91,19 +88,6 @@ class TupleAnnexConstantStep : public JobStep, public TupleDeliveryStep
   std::vector<uint64_t> fInputIteratorsList;
   uint64_t fOutputIterator;
 
-  class Runner
-  {
-   public:
-    Runner(TupleAnnexConstantStep* step) : fStep(step), id(0)
-    {
-    }
-    void operator()()
-    {
-        fStep->execute();
-    }
-
-    TupleAnnexConstantStep* fStep;
-  };
   uint64_t fRunner;  // thread pool handle
 
   uint64_t fRowsProcessed;
@@ -113,7 +97,7 @@ class TupleAnnexConstantStep : public JobStep, public TupleDeliveryStep
   uint64_t fMaxThreads;
   bool fLimitHit;
   bool fEndOfResult;
-  bool fParallelOp;
+  //bool fParallelOp;
 
   funcexp::FuncExp* fFeInstance;
   JobList* fJobList;
@@ -121,25 +105,6 @@ class TupleAnnexConstantStep : public JobStep, public TupleDeliveryStep
   std::vector<uint64_t> fRunnersList;
   uint16_t fFinishedThreads;
   boost::mutex fParallelFinalizeMutex;
-};
-
-template <class T>
-class reservablePQ : private std::priority_queue<T>
-{
- public:
-  typedef typename std::priority_queue<T>::size_type size_type;
-  reservablePQ(size_type capacity = 0)
-  {
-    reserve(capacity);
-  };
-  void reserve(size_type capacity)
-  {
-    this->c.reserve(capacity);
-  }
-  size_type capacity() const
-  {
-    return this->c.capacity();
-  }
 };
 
 }  // namespace joblist

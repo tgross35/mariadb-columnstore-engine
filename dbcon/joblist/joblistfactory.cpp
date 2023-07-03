@@ -81,6 +81,7 @@ using namespace logging;
 #include "tuplehavingstep.h"
 #include "windowfunctionstep.h"
 #include "tupleannexstep.h"
+#include "tupleannexconstantstep.h"
 
 #include "jlf_common.h"
 #include "jlf_graphics.h"

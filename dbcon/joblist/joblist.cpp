@@ -42,6 +42,7 @@ using namespace execplan;
 #include "tupleunion.h"
 #include "tupleaggregatestep.h"
 #include "windowfunctionstep.h"
+#include "tupleannexconstantstep.h"
 #include "configcpp.h"
 #include "oamcache.h"
 
