@@ -108,26 +108,26 @@ void TupleAnnexConstantStep::initialize(const RowGroup& rgIn, const JobInfo& job
   fRowGroupIn = rgIn;
   fRowGroupIn.initRow(&fRowIn);
 
-    vector<uint32_t> oids, oidsIn = rgIn.getOIDs();
-    vector<uint32_t> keys, keysIn = rgIn.getKeys();
-    vector<uint32_t> scale, scaleIn = rgIn.getScale();
-    vector<uint32_t> precision, precisionIn = rgIn.getPrecision();
-    vector<CalpontSystemCatalog::ColDataType> types, typesIn = rgIn.getColTypes();
-    vector<uint32_t> csNums, csNumsIn = rgIn.getCharsetNumbers();
-    vector<uint32_t> pos, posIn = rgIn.getOffsets();
-    size_t n = jobInfo.nonConstDelCols.size();
+  vector<uint32_t> oids, oidsIn = rgIn.getOIDs();
+  vector<uint32_t> keys, keysIn = rgIn.getKeys();
+  vector<uint32_t> scale, scaleIn = rgIn.getScale();
+  vector<uint32_t> precision, precisionIn = rgIn.getPrecision();
+  vector<CalpontSystemCatalog::ColDataType> types, typesIn = rgIn.getColTypes();
+  vector<uint32_t> csNums, csNumsIn = rgIn.getCharsetNumbers();
+  vector<uint32_t> pos, posIn = rgIn.getOffsets();
+  size_t n = jobInfo.nonConstDelCols.size();
 
-    // Add all columns into output RG as keys. Can we put only keys?
-    oids.insert(oids.end(), oidsIn.begin(), oidsIn.begin() + n);
-    keys.insert(keys.end(), keysIn.begin(), keysIn.begin() + n);
-    scale.insert(scale.end(), scaleIn.begin(), scaleIn.begin() + n);
-    precision.insert(precision.end(), precisionIn.begin(), precisionIn.begin() + n);
-    types.insert(types.end(), typesIn.begin(), typesIn.begin() + n);
-    csNums.insert(csNums.end(), csNumsIn.begin(), csNumsIn.begin() + n);
-    pos.insert(pos.end(), posIn.begin(), posIn.begin() + n + 1);
+  // Add all columns into output RG as keys. Can we put only keys?
+  oids.insert(oids.end(), oidsIn.begin(), oidsIn.begin() + n);
+  keys.insert(keys.end(), keysIn.begin(), keysIn.begin() + n);
+  scale.insert(scale.end(), scaleIn.begin(), scaleIn.begin() + n);
+  precision.insert(precision.end(), precisionIn.begin(), precisionIn.begin() + n);
+  types.insert(types.end(), typesIn.begin(), typesIn.begin() + n);
+  csNums.insert(csNums.end(), csNumsIn.begin(), csNumsIn.begin() + n);
+  pos.insert(pos.end(), posIn.begin(), posIn.begin() + n + 1);
 
-    fRowGroupOut =
-        RowGroup(oids.size(), pos, oids, keys, types, csNums, scale, precision, jobInfo.stringTableThreshold);
+  fRowGroupOut =
+      RowGroup(oids.size(), pos, oids, keys, types, csNums, scale, precision, jobInfo.stringTableThreshold);
 
 
 
@@ -296,7 +296,7 @@ void TupleAnnexConstantStep::execute()
   catch (...)
   {
     handleException(std::current_exception(), logging::ERR_IN_PROCESS, logging::ERR_ALWAYS_CRITICAL,
-                    "TupleAnnexConstantStep::executeNoOrderBy()");
+                    "TupleAnnexConstantStep::execute()");
   }
 
   while (more)

@@ -557,12 +557,27 @@ void adjustLastStep(JobStepVector& querySteps, DeliveredTableMap& deliverySteps,
     deliverySteps[CNX_VTABLE_ID] = jobInfo.annexStep;
   }
 
-  SJSTEP acs;
+
+  SJSTEP acs(new TupleAnnexConstantStep(jobInfo));
+
+  TupleAnnexConstantStep* tacs = dynamic_cast<TupleAnnexConstantStep*>(acs.get());
+  tacs->setLimit(jobInfo.limitStart, jobInfo.limitCount);
+
+  if (jobInfo.orderByColVec.size() > 0)
+  {
+    tacs->setMaxThreads(jobInfo.orderByThreads);
+  }
+
+  //if (jobInfo.constantCol == CONST_COL_EXIST)
+  //  tacs->addConstant(new TupleConstantStep(jobInfo));
+
+  //if (jobInfo.hasDistinct)
+  //  tacs->setDistinct();
+
   TupleAnnexStep* as = dynamic_cast<TupleAnnexStep*>(deliverySteps[CNX_VTABLE_ID].get());
   RowGroup rg2 = as->getDeliveredRowGroup();
 
   if (jobInfo.trace)
-
     cout << "Output RowGroup 2: " << rg2.toString() << endl;
 
   AnyDataListSPtr spdlIn(new AnyDataList());
@@ -586,7 +601,7 @@ void adjustLastStep(JobStepVector& querySteps, DeliveredTableMap& deliverySteps,
   acs->outputAssociation(jsaOut);
 
   querySteps.push_back(acs);
-  dynamic_cast<TupleAnnexStep*>(acs.get())->initialize(rg2, jobInfo);
+  dynamic_cast<TupleAnnexConstantStep*>(acs.get())->initialize(rg2, jobInfo);
   deliverySteps[CNX_VTABLE_ID] = acs;
 
   // Check if constant false
