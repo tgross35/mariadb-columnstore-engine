@@ -86,20 +86,7 @@ namespace joblist
 {
 TupleAnnexConstantStep::TupleAnnexConstantStep(const JobInfo& jobInfo)
  : JobStep(jobInfo)
- , fInputDL(NULL)
- , fOutputDL(NULL)
- , fInputIterator(0)
- , fOutputIterator(0)
- , fRunner(0)
- , fRowsProcessed(0)
- , fRowsReturned(0)
- , fLimitStart(0)
- , fLimitCount(-1)
- , fLimitHit(false)
- , fEndOfResult(false)
- , fFeInstance(funcexp::FuncExp::instance())
  , fJobList(jobInfo.jobListPtr)
- , fFinishedThreads(0)
 {
   fExtendedInfo = "TNS: ";
   fQtc.stepParms().stepType = StepTeleStats::T_TNS;
@@ -238,30 +225,6 @@ uint32_t TupleAnnexConstantStep::nextBand(messageqcpp::ByteStream& bs)
 
 void TupleAnnexConstantStep::execute()
 {
-  executeNoOrderBy();
-
-  StepTeleStats sts;
-  sts.query_uuid = fQueryUuid;
-  sts.step_uuid = fStepUuid;
-  sts.msg_type = StepTeleStats::ST_SUMMARY;
-  sts.total_units_of_work = sts.units_of_work_completed = 1;
-  sts.rows = fRowsReturned;
-  postStepSummaryTele(sts);
-
-  if (traceOn())
-  {
-    if (dlTimes.FirstReadTime().tv_sec == 0)
-      dlTimes.setFirstReadTime();
-
-    dlTimes.setLastReadTime();
-    dlTimes.setEndOfInputTime();
-    printCalTrace();
-  }
-}
-
-
-void TupleAnnexConstantStep::executeNoOrderBy()
-{
   utils::setThreadName("TASwoOrd");
   RGData rgDataIn;
   RGData rgDataOut;
@@ -341,8 +304,25 @@ void TupleAnnexConstantStep::executeNoOrderBy()
 
   // Bug 3136, let mini stats to be formatted if traceOn.
   fOutputDL->endOfInput();
-}
 
+  StepTeleStats sts;
+  sts.query_uuid = fQueryUuid;
+  sts.step_uuid = fStepUuid;
+  sts.msg_type = StepTeleStats::ST_SUMMARY;
+  sts.total_units_of_work = sts.units_of_work_completed = 1;
+  sts.rows = fRowsReturned;
+  postStepSummaryTele(sts);
+
+  if (traceOn())
+  {
+    if (dlTimes.FirstReadTime().tv_sec == 0)
+      dlTimes.setFirstReadTime();
+
+    dlTimes.setLastReadTime();
+    dlTimes.setEndOfInputTime();
+    printCalTrace();
+  }
+}
 
 const RowGroup& TupleAnnexConstantStep::getOutputRowGroup() const
 {

@@ -69,7 +69,6 @@ class TupleAnnexConstantStep : public JobStep, public TupleDeliveryStep
 
  protected:
   void execute();
-  void executeNoOrderBy();
   void formatMiniStats();
   void printCalTrace();
 
@@ -82,28 +81,28 @@ class TupleAnnexConstantStep : public JobStep, public TupleDeliveryStep
   rowgroup::Row fRowOut;
 
   // for datalist
-  RowGroupDL* fInputDL;
-  RowGroupDL* fOutputDL;
-  uint64_t fInputIterator;
+  RowGroupDL* fInputDL = NULL;
+  RowGroupDL* fOutputDL = NULL;
+  uint64_t fInputIterator = 0;
   std::vector<uint64_t> fInputIteratorsList;
-  uint64_t fOutputIterator;
+  uint64_t fOutputIterator = 0;
 
-  uint64_t fRunner;  // thread pool handle
+  uint64_t fRunner = 0;  // thread pool handle
 
-  uint64_t fRowsProcessed;
-  uint64_t fRowsReturned;
-  uint64_t fLimitStart;
-  uint64_t fLimitCount;
+  uint64_t fRowsProcessed = 0;
+  uint64_t fRowsReturned = 0;
+  uint64_t fLimitStart = 0;
+  uint64_t fLimitCount = -1;
   uint64_t fMaxThreads;
-  bool fLimitHit;
-  bool fEndOfResult;
+  bool fLimitHit = false;
+  bool fEndOfResult = false;
   //bool fParallelOp;
 
-  funcexp::FuncExp* fFeInstance;
+  funcexp::FuncExp* fFeInstance = funcexp::FuncExp::instance();
   JobList* fJobList;
 
   std::vector<uint64_t> fRunnersList;
-  uint16_t fFinishedThreads;
+  uint16_t fFinishedThreads = 0;
   boost::mutex fParallelFinalizeMutex;
 };
 
